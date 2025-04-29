@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat with AI - Gemini Style</title>
+    <!-- Add a simple markdown parser library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/7.0.5/marked.min.js"></script>
+    <style>
+        /* Reset and base styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body { 
+            font-family: 'Google Sans', Arial, sans-serif;
+            background-color: #1f1f1f;
+            color: #e8eaed;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        /* Container for limiting width */
+        .container {
+            max-width: 800px;
+            width: 100%;
+            margin: 0 auto;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Header styles */
+        header {
+            background-color: #292a2d;
+            color: #e8eaed;
+            padding: 16px 20px;
+            font-size: 20px;
+            font-weight: 500;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            width: 100%;
+            flex-shrink: 0;
+            z-index: 10;
+        }
+        
+        header .inner-header {
+            width: 100%;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+        }
+        
+        /* header .logo {
+            width: 24px;
+            height: 24px;
+            margin: 0 10px;
+            padding-top: 1.5px;
+            background-color: #8ab4f8;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #292a2d;
+            font-weight: bold;
+        } */
+
+        header .inner-header img {
+            border-radius: 50%;
+            margin: 0 10px;
+            align-items: center;
+            display: flex;
+            justify-content: center;
+            zoom: 1;
+            width: 48px;
+            height: 50px;
+        }
+        
+        /* Main content area - will take all available space */
+        main {
+            flex: 1;
+            overflow: hidden;
+            padding: 20px;
+            padding-bottom: 10px;
+            background-color: #1f1f1f;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Chat container */
+        #chatbox {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            scrollbar-width: thin;
+            scrollbar-color: #5f6368 #1f1f1f;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            padding: 20px;
+        }
+        
+        #chatbox::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        #chatbox::-webkit-scrollbar-track {
+            background: #1f1f1f;
+        }
+        
+        #chatbox::-webkit-scrollbar-thumb {
+            background-color: #5f6368;
+            border-radius: 10px;
+        }
+        
+        /* Message styling */
+        .message-wrapper{
+            display: flex;
+            margin-bottom: 24px;
+            clear: both;
+            width: 100%;
+            align-items:flex-start;
+        }
+        
+        .message {
+            line-height: 1.5;
+            position: relative;
+            font-size: 16px;
+        }
+        
+        .user-wrapper {
+            justify-content: flex-end;
+        }
+        
+        .ai-wrapper {
+            justify-content: flex-start;
+        }
+        
+        .user-message {
+            background-color: #8ab4f8;
+            max-width: 80%;
+            color: #202124;
+            border-radius: 12px 0px 12px 12px;
+            padding: 10px 12px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+            /* Added to properly handle list formatting */
+            text-align: left;
+        }
+        
+        .ai-message {
+            color: #e8eaed;
+            padding: 12px 0;
+            max-width: 86%;
+            /* Important for allowing proper list display */
+            text-align: left;
+        }
+        
+        /* Avatar styling */
+        .avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            margin: 0 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+        
+        .user-avatar {
+            background-color: #8ab4f8;
+            color: #202124;
+        }
+        
+        .ai-avatar {
+            background: linear-gradient(135deg, #8e44ad, #3498db);
+            color: rgb(255, 255, 255);
+            margin-top: 7.5px;
+            font-size: 20px;
+        }
+        
+        /* Additional styles for better markdown rendering */
+        .ai-message p, .user-message p { 
+            margin: 0 0 10px 0; 
+        }
+        .ai-message p:last-child, .user-message p:last-child { 
+            margin-bottom: 0; 
+        }
+        
+        /* Critical fix for lists - now applied to both AI and user messages */
+        .ai-message ul, .ai-message ol,
+        .user-message ul, .user-message ol { 
+            display: block;
+            margin: 10px 0 15px 0;
+            padding-left: 30px;
+            list-style-position: outside;
+        }
+        .ai-message ul, .user-message ul {
+            list-style-type: disc !important;
+        }
+        .ai-message ol, .user-message ol {
+            list-style-type: decimal !important;
+        }
+        .ai-message li, .user-message li { 
+            display: list-item !important;
+            margin-bottom: 8px;
+            padding-left: 5px;
+            text-align: left;
+        }
+        .ai-message li:last-child, .user-message li:last-child {
+            margin-bottom: 0;
+        }
+        
+        /* Force render for markdown list elements */
+        .ai-message ul > li::marker,
+        .user-message ul > li::marker {
+            content: "• ";
+            color: #e8eaed
+        }
+        
+        /* Fixed color for user message list markers */
+        .user-message ul > li::marker {
+            color: #202124;
+        }
+        
+        .ai-message ol > li::marker {
+            color: #e8eaed;
+        }
+        
+        .user-message ol > li::marker {
+            color: #202124;
+        }
+        
+        /* Fixed code styling - now applied to both AI and user messages */
+        .ai-message code, .user-message code { 
+            background-color: #2d2d2d; 
+            padding: 2px 4px; 
+            border-radius: 3px; 
+            font-family: monospace;
+        }
+        
+        .ai-message code {
+            color: #e8eaed;
+        }
+        
+        .user-message code {
+            color: #202124;
+        }
+        
+        .ai-message pre, .user-message pre { 
+            background-color: #2d2d2d; 
+            padding: 10px; 
+            border-radius: 5px; 
+            margin: 10px 0;
+            overflow-x: auto; 
+        }
+        .ai-message pre code, .user-message pre code {
+            background-color: transparent;
+            padding: 0;
+            border-radius: 0;
+        }
+        
+        /* Add proper tab rendering */
+        .ai-message pre code, .user-message pre code {
+            tab-size: 4;
+            -moz-tab-size: 4;
+            white-space: pre;
+        }
+        
+        /* Other markdown elements */
+        .ai-message strong, .user-message strong { font-weight: bold; }
+        .ai-message em, .user-message em { font-style: italic; }
+        
+        .ai-message a { color: #8ab4f8; text-decoration: none; }
+        .ai-message a:hover { text-decoration: underline; }
+        
+        .user-message a { color: #202124; text-decoration: underline; }
+        .user-message a:hover { text-decoration: none; }
+        
+        /* Blockquote styling */
+        .ai-message blockquote {
+            border-left: 3px solid #5f6368;
+            padding-left: 14px;
+            margin: 10px 0;
+            color: #b0b5bc;
+        }
+        
+        .user-message blockquote {
+            border-left: 3px solid #375a86;
+            padding-left: 14px;
+            margin: 10px 0;
+            color: #202124;
+        }
+        
+        /* Table styling */
+        .ai-message table, .user-message table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 10px 0;
+        }
+        
+        .ai-message th, .ai-message td,
+        .user-message th, .user-message td {
+            border: 1px solid #5f6368;
+            padding: 8px;
+            text-align: left;
+        }
+        
+        .ai-message th, .user-message th {
+            background-color: #2d2d2d;
+        }
+        
+        /* Input area - fixed at bottom */
+        #input-container {
+            padding: 10px;
+            padding-top: 0%;
+            box-shadow: 0px -20px 20px 0px #1f1f1f;
+            width: 100%;
+            z-index: 10;
+            flex-shrink: 0;
+        }
+        
+        .input-inner {
+            max-width: 800px;
+            width: 100%;
+            margin: 0 auto;
+            border: 2px solid #5f6368;
+            border-radius: 22px;
+        }
+
+        #message-form {
+            display: flex;
+            padding: 15px;
+            flex-direction: column;
+        }
+
+
+        #message-form div {
+            text-align: center;
+        }
+
+        
+        #leading-action {
+            display: flex;
+            align-items: center;
+            justify-content: right;
+            position: relative;
+            padding: 10px;
+            height: 30px;
+        }
+
+        #input-area {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            background-color: #1f1f1f;
+            transition: border-color 0.2s;
+            position: relative; /* Added for proper textarea alignment */
+        }
+        
+        #input-area:focus-within {
+            border-color: #5f6368;
+        }
+        
+        /* Changed from input to textarea */
+        #message-input {
+            flex-grow: 1;
+            padding: 5px;
+            border: none;
+            outline: none;
+            font-size: 16px;
+            background-color: transparent;
+            color: #e8eaed;
+            font-family: 'Google Sans', Arial, sans-serif;
+            min-height: 52px; /* Default height matches previous input height */
+            max-height: 200px; /* Limit max height to ~25% of typical screens */
+            resize: none; /* Prevent manual resizing */
+            overflow-y: auto; /* Add scrollbar when content exceeds max height */
+            line-height: 1.2;
+            white-space: pre-wrap; /* Preserves newlines and spaces */
+        }
+        
+        #message-input::placeholder {
+            color: #9aa0a6;
+        }
+        
+        /* Scrollbar styling for the textarea */
+        #message-input::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        #message-input::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        #message-input::-webkit-scrollbar-thumb {
+            background-color: #5f6368;
+            border-radius: 10px;
+        }
+        
+        #send-button {
+            border: None;
+            background-color: transparent;
+            justify-content: center;
+            align-items: center;
+            color: #5f6368;
+            cursor: pointer;
+            font-size: 20px;
+            position: relative;
+        }
+        
+        #send-button:hover {
+            color: #3498db;
+        }
+        
+        #send-button:disabled {
+            color: #5f6368;
+            cursor: not-allowed;
+        }
+        
+        /* Loading animation styles */
+        .loading-container {
+            display: flex;
+            align-items: center;
+            margin-top: 2.5px;
+            margin-left: -2px;
+            max-width: 90%;
+            padding: 12px 0;
+            color: #e8eaed;
+        }
+        
+        .loading-dots {
+            display: inline-flex;
+            margin-left: 8px;
+        }
+        
+        .loading-dots span {
+            width: 8px;
+            height: 8px;
+            margin: 0 4px;
+            background-color: #e8eaed;
+            border-radius: 50%;
+            opacity: 0;
+            animation: loadingDots 1.4s infinite ease-in-out both;
+        }
+        
+        .loading-dots span:nth-child(1) {
+            animation-delay: 0s;
+        }
+        
+        .loading-dots span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .loading-dots span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        
+
+        .refiner .loading-dots span{
+            background-color: #e8eaed;
+        }
+
+        .database .loading-dots span{
+            background-color: #e8eaed;
+        }
+        
+        .manager .loading-dots span {
+            background-color: #81c995; 
+        }
+        
+        .thinking .loading-dots span {
+            background-color: #e8eaed; /* Default white */
+        }
+
+        .refining .loading-dots span {
+            background-color: #8ab4f8; /* Blue for reflecting */
+        }
+
+        .database-save .loading-dots span {
+            background-color: #8ab4f8; /* Default white */
+        }
+
+        .database-retrieve .loading-dots span {
+            background-color: #8ab4f8; /* Default white */
+        }
+
+        .database-deletion .loading-dots span {
+            background-color: #8ab4f8; /* Default white */
+        }
+
+
+        
+        @keyframes loadingDots {
+            0%, 80%, 100% { 
+                opacity: 0;
+            }
+            40% { 
+                opacity: 1;
+            }
+        }
+        
+        /* Responsive styles */
+        @media (max-width: 840px) {
+            .container, .inner-header, .input-inner {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="inner-header">
+            <a target="_blank">
+                <img src="{{url_for('static', filename='logo.jpg')}}" alt="Agent" width="600" height="400">
+            </a>
+            Chat with Atlas
+        </div>
+    </header>
+
+    <div class="container">
+        <main>
+            <div id="chatbox">
+                <div class="message-wrapper ai-wrapper">
+                    <div class="avatar ai-avatar">A</div>
+                    <div class="message ai-message">Hello Naufal &#128522;! I'm Atlas your AI assistant. How can I help you today?</div>
+                </div>
+            </div>
+        </main>
+
+        <div id="input-container">
+            <div class="input-inner">
+                    <form id="message-form">
+                        <div id="input-area">
+                            <textarea id="message-input" placeholder="Message..." autocomplete="off"></textarea>
+                        </div>
+                        <div id="leading-action">
+                            <button type="submit" id="send-button" style="font-size:24px">&#10140;</button>
+                        </div>
+                    </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const chatbox = document.getElementById('chatbox');
+        const messageForm = document.getElementById('message-form');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+        
+        // Auto-resize textarea based on content
+        messageInput.addEventListener('input', function() {
+            // Reset height to auto to get accurate scrollHeight
+            this.style.height = 'auto';
+            
+            // Set new height based on content, but don't exceed max-height (handled by CSS)
+            this.style.height = Math.min(this.scrollHeight, 200) + 'px';
+        });
+        
+        // Allow sending message with Enter key, but Shift+Enter for new line
+        messageInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (messageInput.value.trim()) {
+                    messageForm.dispatchEvent(new Event('submit'));
+                }
+            }
+        });
+        
+        let currentResponseDiv = null;
+        let currentLoadingWrapper = null;
+        
+        // Configure marked.js for security and features
+        marked.setOptions({
+            breaks: true,       // Enable converting line breaks to <br>
+            gfm: true,          // Enable GitHub Flavored Markdown
+            sanitize: false,    // Don't sanitize - modern versions of marked handle this internally
+            headerIds: false,   // Disable header IDs to avoid conflicts
+            mangle: false,      // Don't mangle email links
+            renderer: new marked.Renderer()
+        });
+
+        // Helper function to detect if text contains markdown syntax for lists
+        function containsMarkdownLists(text) {
+            // Check for numbered lists (1. Item) or bullet lists (* Item, - Item)
+            return /^\s*(\d+\.|\*|\-)\s+/m.test(text);
+        }
+
+        // Enhanced function to show a loading indicator with different states
+        function showLoadingIndicator(state = 'thinking') {
+            // If there's already a loading indicator, just update its state
+            if (currentLoadingWrapper) {
+                updateLoadingState(state);
+                return currentLoadingWrapper;
+            }
+            
+            const loadingWrapper = document.createElement('div');
+            loadingWrapper.classList.add('message-wrapper', 'ai-wrapper');
+            loadingWrapper.id = 'loading-indicator';
+            
+            const avatar = document.createElement('div');
+            avatar.classList.add('avatar', 'ai-avatar');
+            avatar.textContent = 'A';
+            
+            const loadingDiv = document.createElement('div');
+            loadingDiv.classList.add('loading-container', state);
+            
+            // Set the appropriate text based on state
+            let stateText = 'Thinking';
+            
+            if (state === 'refiner') stateText = "Calling Refiner Agent";
+            else if (state === 'refining') stateText = 'Refining';
+            else if (state === 'manager') stateText = 'Sending to Manager';
+            else if (state === 'database') stateText = "Calling Database Agent";
+            else if (state === 'database-save') stateText = 'Saving';
+            else if (state === 'database-retrieve') stateText = 'Retrieving';
+            else if (state === 'database-deletion') stateText = 'Deleting';
+            
+            loadingDiv.innerHTML = `
+                <span>${stateText}</span>
+                <div class="loading-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            `;
+            
+            loadingWrapper.appendChild(avatar);
+            loadingWrapper.appendChild(loadingDiv);
+            chatbox.appendChild(loadingWrapper);
+            chatbox.scrollTop = chatbox.scrollHeight;
+            currentLoadingWrapper = loadingWrapper;
+            return loadingWrapper;
+        }
+
+        // Function to update loading state
+        function updateLoadingState(state) {
+            if (!currentLoadingWrapper) return;
+            
+            const loadingDiv = currentLoadingWrapper.querySelector('.loading-container');
+            if (!loadingDiv) return;
+            
+            // Remove all state classes first
+            loadingDiv.classList.remove('thinking', 'refiner', 'refining', 'manager', 'database', 'database-save', 'database-retrieve', 'database-deletion');
+            
+            // Add the new state class
+            loadingDiv.classList.add(state);
+            
+            // Update the text label
+            const stateSpan = loadingDiv.querySelector('span');
+            if (stateSpan) {
+                if (state === 'thinking') stateSpan.textContent = 'Thinking';
+                else if (state === 'refiner') stateSpan.textContent = 'Calling Refiner Agent';
+                else if (state === 'refining') stateSpan.textContent = 'Refining';
+                else if (state === 'manager') stateSpan.textContent = 'Sending to Manager';
+                else if (state === 'database') stateSpan.textContent = 'Calling Database Agent';
+                else if (state === 'database-save') stateSpan.textContent = 'Saving';
+                else if (state === 'database-retrieve') stateSpan.textContent = 'Retrieving';
+                else if (state === 'database-deletion') stateSpan.textContent = 'Deleting';
+            }
+        }
+
+        // Function to add a message to the chatbox
+        function addMessage(sender, text, isMarkdown = false) {
+            const messageWrapper = document.createElement('div');
+            messageWrapper.classList.add('message-wrapper');
+            
+            const avatar = document.createElement('div');
+            avatar.classList.add('avatar');
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message');
+            
+            if (sender === 'user') {
+                messageWrapper.classList.add('user-wrapper');
+                avatar.classList.add('user-avatar');
+                avatar.textContent = 'U';
+                messageDiv.classList.add('user-message');
+                
+                // Check if the message contains markdown syntax for lists
+                const shouldParseAsMarkdown = containsMarkdownLists(text);
+                
+                if (shouldParseAsMarkdown) {
+                    // Parse as markdown to properly render lists
+                    messageDiv.innerHTML = marked.parse(text);
+                    
+                    // Extra processing for lists
+                    const lists = messageDiv.querySelectorAll('ul, ol');
+                    lists.forEach(list => {
+                        list.style.display = 'block';
+                        list.style.listStylePosition = 'outside';
+                        if (list.tagName === 'UL') {
+                            list.style.listStyleType = 'disc';
+                        } else {
+                            list.style.listStyleType = 'decimal';
+                        }
+                    });
+                    
+                    const listItems = messageDiv.querySelectorAll('li');
+                    listItems.forEach(item => {
+                        item.style.display = 'list-item';
+                    });
+                } else {
+                    // Keep as plain text if no markdown detected
+                    messageDiv.textContent = text;
+                }
+                
+                // Append in correct order (avatar after message for user)
+                messageWrapper.appendChild(messageDiv);
+                messageWrapper.appendChild(avatar);
+            } else if (sender === 'ai') {
+                messageWrapper.classList.add('ai-wrapper');
+                avatar.classList.add('ai-avatar');
+                avatar.textContent = 'A';
+                messageDiv.classList.add('ai-message');
+                
+                if (isMarkdown) {
+                    // Parse markdown to HTML
+                    messageDiv.innerHTML = marked.parse(text);
+                    
+                    // Extra processing after marking parsing to ensure lists are rendered correctly
+                    const lists = messageDiv.querySelectorAll('ul, ol');
+                    lists.forEach(list => {
+                        list.style.display = 'block';
+                        list.style.listStylePosition = 'outside';
+                        if (list.tagName === 'UL') {
+                            list.style.listStyleType = 'disc';
+                        } else {
+                            list.style.listStyleType = 'decimal';
+                        }
+                    });
+                    
+                    const listItems = messageDiv.querySelectorAll('li');
+                    listItems.forEach(item => {
+                        item.style.display = 'list-item';
+                    });
+                } else {
+                    messageDiv.textContent = text;
+                }
+                
+                // Append in correct order (avatar before message for AI)
+                messageWrapper.appendChild(avatar);
+                messageWrapper.appendChild(messageDiv);
+                
+                currentResponseDiv = messageDiv; // Store reference to current AI message div
+            }
+            
+            chatbox.appendChild(messageWrapper);
+            chatbox.scrollTop = chatbox.scrollHeight; // Scroll to bottom
+            return messageDiv;
+        }
+
+        // Handle form submission
+        messageForm.addEventListener('submit', async (event) => {
+            event.preventDefault(); // Prevent page reload
+            const userMessage = messageInput.value.trim();
+
+            if (userMessage) {
+                addMessage('user', userMessage); // Display user message
+                messageInput.value = ''; // Clear input
+                
+                // Reset textarea height to default
+                messageInput.style.height = 'auto';
+                
+                sendButton.disabled = true; // Disable button while waiting
+                
+                // Show initial loading indicator with 'thinking' state
+                showLoadingIndicator('thinking');
+                
+                // Create placeholder for AI response but don't add to DOM yet
+                currentResponseDiv = document.createElement('div');
+                currentResponseDiv.classList.add('message', 'ai-message');
+                
+                try {
+                    // Create a new fetch request
+                    const fetchOptions = {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ message: userMessage }),
+                    };
+                    
+                    // First make a POST request
+                    const response = await fetch('/chat', fetchOptions);
+                    
+                    // Now handle the stream response
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let accumulatedResponse = '';
+                    let firstTokenReceived = false;
+                    
+                    // Process the stream
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        
+                        // Decode the chunk
+                        const chunk = decoder.decode(value, { stream: true });
+                        
+                        // Process SSE data
+                        const lines = chunk.split('\n\n');
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                try {
+                                    const data = JSON.parse(line.substring(6));
+                                    
+                                    if (data.error) {
+                                        // Remove loading indicator
+                                        if (currentLoadingWrapper) {
+                                            chatbox.removeChild(currentLoadingWrapper);
+                                            currentLoadingWrapper = null;
+                                        }
+                                        
+                                        // Add error message
+                                        addMessage('ai', `Error: ${data.error}`, true);
+                                    } else if (data.status) {
+                                        // Handle state updates
+                                        updateLoadingState(data.status);
+                                    } else if (data.token) {
+                                        // If this is the first token, remove the loading indicator
+                                        if (!firstTokenReceived) {
+                                            firstTokenReceived = true;
+                                            if (currentLoadingWrapper) {
+                                                chatbox.removeChild(currentLoadingWrapper);
+                                                currentLoadingWrapper = null;
+                                            }
+                                            
+                                            // Now add the AI message div to DOM with avatar
+                                            const messageWrapper = document.createElement('div');
+                                            messageWrapper.classList.add('message-wrapper', 'ai-wrapper');
+                                            
+                                            const avatar = document.createElement('div');
+                                            avatar.classList.add('avatar', 'ai-avatar');
+                                            avatar.textContent = 'A';
+                                            
+                                            messageWrapper.appendChild(avatar);
+                                            messageWrapper.appendChild(currentResponseDiv);
+                                            chatbox.appendChild(messageWrapper);
+                                        }
+                                        
+                                        // Append the new token to the message
+                                        accumulatedResponse += data.token;
+                                        
+                                        // Update with parsed markdown 
+                                        currentResponseDiv.innerHTML = marked.parse(accumulatedResponse);
+                                        
+                                        // Extra processing for lists
+                                        const lists = currentResponseDiv.querySelectorAll('ul, ol');
+                                        lists.forEach(list => {
+                                            list.style.display = 'block';
+                                            list.style.listStylePosition = 'outside';
+                                            if (list.tagName === 'UL') {
+                                                list.style.listStyleType = 'disc';
+                                            } else {
+                                                list.style.listStyleType = 'decimal';
+                                            }
+                                        });
+                                        
+                                        const listItems = currentResponseDiv.querySelectorAll('li');
+                                        listItems.forEach(item => {
+                                            item.style.display = 'list-item';
+                                        });
+                                        
+                                        chatbox.scrollTop = chatbox.scrollHeight; // Keep scrolling to latest content
+                                    } else if (data.end_of_stream) {
+                                        // Stream is complete
+                                        console.log("Stream complete");
+                                        
+                                        // Remove loading indicator if it's still there
+                                        if (currentLoadingWrapper) {
+                                            chatbox.removeChild(currentLoadingWrapper);
+                                            currentLoadingWrapper = null;
+                                        }
+                                
+                                        // Final rendering of the complete markdown
+                                        if (currentResponseDiv.parentNode) {
+                                            currentResponseDiv.innerHTML = marked.parse(accumulatedResponse);
+                                            
+                                            // Final processing to ensure lists are rendered correctly
+                                            const lists = currentResponseDiv.querySelectorAll('ul, ol');
+                                            lists.forEach(list => {
+                                                list.style.display = 'block';
+                                                list.style.listStylePosition = 'outside';
+                                                if (list.tagName === 'UL') {
+                                                    list.style.listStyleType = 'disc';
+                                                } else {
+                                                    list.style.listStyleType = 'decimal';
+                                                }
+                                            });
+                                            
+                                            const listItems = currentResponseDiv.querySelectorAll('li');
+                                            listItems.forEach(item => {
+                                                item.style.display = 'list-item';
+                                            });
+                                        } else {
+                                            // If no tokens were received before end_of_stream
+                                            addMessage('ai', 'No response received from AI.', true);
+                                        }
+                                    }
+                                } catch (e) {
+                                    console.error("Error parsing SSE data:", e);
+                                }
+                            }
+                        }
+                    }
+                    
+                } catch (error) {
+                    console.error('Network error or fetch failed:', error);
+                    
+                    // Remove loading indicator
+                    if (currentLoadingWrapper) {
+                        chatbox.removeChild(currentLoadingWrapper);
+                        currentLoadingWrapper = null;
+                    }
+                    
+                    // Add error message
+                    addMessage('ai', 'Error: Could not connect to the server.', true);
+                } finally {
+                    sendButton.disabled = false; // Re-enable button
+                    messageInput.focus(); // Focus back on input
+                    
+                    // Make sure loading indicator is removed if it's still there
+                    if (currentLoadingWrapper) {
+                        chatbox.removeChild(currentLoadingWrapper);
+                        currentLoadingWrapper = null;
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
